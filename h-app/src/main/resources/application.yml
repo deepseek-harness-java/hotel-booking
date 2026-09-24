@@ -1,0 +1,14 @@
+server:
+  port: 18095
+  async:
+    request-timeout: 180s
+spring:
+  application:
+    name: hotel-booking
+  mvc:
+    async:
+      request-timeout: 180s
+h:
+  assistant:
+    harness-base-url: http://127.0.0.1:8090
+    agent-id: hotel-copilot

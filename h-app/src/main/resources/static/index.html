@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 预订管家 · Hotel Booking</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"PingFang SC","Microsoft YaHei",sans-serif; background:#f7f5f2; color:#2b2318; }
+  header { background:linear-gradient(135deg,#5a4326,#93744a); color:#fff; padding:18px 28px; display:flex; justify-content:space-between; align-items:center; }
+  header h1 { font-size:20px; }
+  header .sub { font-size:12px; opacity:.85; margin-top:4px; }
+  header .badge { font-size:13px; background:rgba(255,255,255,.15); padding:6px 14px; border-radius:20px; }
+  main { display:grid; grid-template-columns:1fr 340px; gap:16px; padding:16px 20px; max-width:1240px; margin:0 auto; }
+  .col { display:flex; flex-direction:column; gap:16px; }
+  .card { background:#fff; border-radius:12px; padding:16px 18px; box-shadow:0 1px 4px rgba(90,67,38,.08); }
+  .card h2 { font-size:15px; margin-bottom:12px; color:#5a4326; }
+  .stat { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+  .stat div { background:#f6f1e7; border-radius:10px; padding:12px; }
+  .stat b { display:block; font-size:22px; color:#8a6432; margin-top:4px; }
+  .stat span { font-size:12px; color:#8d7f68; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; color:#8d7f68; font-weight:500; padding:8px 6px; border-bottom:1px solid #ece5d8; }
+  td { padding:9px 6px; border-bottom:1px solid #f5f1e9; }
+  .tag { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; }
+  .tag.g { background:#e7f2e0; color:#4e7c2f; }
+  .tag.y { background:#fdf3e0; color:#c07f16; }
+  .tag.b { background:#eee9fb; color:#6a4fc0; }
+  .tag.r { background:#fdeaea; color:#c74a44; }
+  .rt { border:1px solid #ece5d8; border-radius:10px; padding:12px 14px; margin-bottom:10px; display:flex; justify-content:space-between; gap:10px; }
+  .rt b { color:#5a4326; font-size:14px; }
+  .rt .meta { font-size:12px; color:#8d7f68; margin-top:4px; line-height:1.7; }
+  .rt .price { text-align:right; min-width:110px; }
+  .rt .price b { font-size:20px; color:#a4531f; }
+  .rt .price .mem { font-size:12px; color:#4e7c2f; }
+  .rt .price .left { font-size:12px; margin-top:4px; }
+  .ai-panel { position:sticky; top:16px; display:flex; flex-direction:column; height:calc(100vh - 32px); background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 1px 4px rgba(90,67,38,.08); }
+  .ai-head { background:linear-gradient(135deg,#5a4326,#93744a); color:#fff; padding:14px 16px; }
+  .ai-head b { font-size:15px; }
+  .ai-head .sub { font-size:11px; opacity:.85; margin-top:3px; }
+  .ai-body { flex:1; overflow-y:auto; padding:14px; font-size:13.5px; line-height:1.75; }
+  .ai-body .msg { margin-bottom:12px; white-space:pre-wrap; word-break:break-word; }
+  .ai-body .msg.user { background:#f6f1e7; border-radius:10px 10px 2px 10px; padding:8px 12px; margin-left:24px; color:#2b2318; }
+  .chips { padding:8px 14px; display:flex; flex-wrap:wrap; gap:6px; border-top:1px solid #f2ede4; }
+  .chip { font-size:12px; background:#f6f1e7; color:#5a4326; border:none; border-radius:14px; padding:5px 10px; cursor:pointer; }
+  .chip:hover { background:#ece2cf; }
+  .ai-input { display:flex; gap:8px; padding:10px 14px; border-top:1px solid #f2ede4; }
+  .ai-input input { flex:1; border:1px solid #ddd3c2; border-radius:8px; padding:9px 12px; font-size:13px; outline:none; }
+  .ai-input input:focus { border-color:#93744a; }
+  .ai-input button { background:#93744a; color:#fff; border:none; border-radius:8px; padding:0 18px; font-size:13px; cursor:pointer; }
+  .ai-input button:disabled { background:#c6b49a; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>🏨 AI 预订管家</h1>
+    <div class="sub">房型 · 房态 · 预订 · 订单 · 经营 | 云栖湖畔酒店</div>
+  </div>
+  <div class="badge" id="topBadge">加载中…</div>
+</header>
+<main>
+  <div class="col">
+    <div class="card">
+      <h2>今日经营</h2>
+      <div class="stat" id="stats"></div>
+    </div>
+    <div class="card">
+      <h2>房型与余量</h2>
+      <div id="rooms"></div>
+    </div>
+    <div class="card">
+      <h2>近期订单</h2>
+      <table>
+        <thead><tr><th>订单</th><th>客人</th><th>房型</th><th>日期</th><th>总价</th><th>状态</th></tr></thead>
+        <tbody id="bkRows"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="ai-panel">
+    <div class="ai-head">
+      <b>🛎️ AI 预订管家</b>
+      <div class="sub">hotel-copilot · 房型 / 房态 / 预订 / 订单 / 经营</div>
+    </div>
+    <div class="ai-body" id="aiBody"></div>
+    <div class="chips">
+      <button class="chip" onclick="ask('有什么房型？两个人住推荐哪个？')">推荐房型</button>
+      <button class="chip" onclick="ask('湖景套房未来一周房价怎么样？')">房态日历</button>
+      <button class="chip" onclick="ask('现在入住率多少？经营怎么样？')">经营情况</button>
+      <button class="chip" onclick="ask('我是会员王先生，帮我订一间高级大床房，今晚入住住两晚')">订房</button>
+    </div>
+    <div class="ai-input">
+      <input id="q" placeholder="例如：周末还有湖景套房吗？会员价多少？" onkeydown="if(event.key==='Enter')send()">
+      <button id="sendBtn" onclick="send()">发送</button>
+    </div>
+  </div>
+</main>
+<script>
+const j = r => r.json().then(d => d.data ?? d);
+const stTag = s => s==='已入住' ? '<span class="tag b">已入住</span>' : s==='已退房' ? '<span class="tag g">已退房</span>' : s==='已确认' ? '<span class="tag y">已确认</span>' : `<span class="tag r">${s}</span>`;
+async function load() {
+  try {
+    const st = await j(fetch('/api/stats'));
+    document.getElementById('topBadge').textContent = `入住率 ${st.occupancyRate}% · ADR ¥${st.adr}`;
+    document.getElementById('stats').innerHTML = `
+      <div><span>入住率</span><b>${st.occupancyRate}%</b></div>
+      <div><span>平均房价</span><b>¥${st.adr}</b></div>
+      <div><span>在店收入</span><b>¥${st.revenue}</b></div>
+      <div><span>经营建议</span><b style="font-size:12px;line-height:1.5;color:#6d5c42">${st.advice}</b></div>`;
+    const rs = await j(fetch('/api/rooms'));
+    document.getElementById('rooms').innerHTML = rs.map(r => `
+      <div class="rt">
+        <div><b>${r.name}</b> ${r.scarce ? '<span class="tag r">紧张</span>' : '<span class="tag g">有房</span>'}
+          <div class="meta">${r.bed} · ${r.sizeSqm}㎡ · 可住 ${r.maxGuests} 人<br>${(r.perks||[]).join(' / ')}</div></div>
+        <div class="price"><b>¥${r.price}</b><div class="mem">会员 ¥${r.memberPrice}</div>
+          <div class="left">剩 ${r.left} 间</div></div>
+      </div>`).join('');
+    const bs = await j(fetch('/api/bookings'));
+    document.getElementById('bkRows').innerHTML = bs.map(b => `
+      <tr><td><b>${b.id}</b></td><td>${b.guest}</td><td>${b.roomTypeName}${b.rooms>1?` ×${b.rooms}`:''}</td>
+      <td style="font-size:12px">${b.checkIn}<br>→ ${b.checkOut}（${b.nights}晚）</td>
+      <td>¥${b.total}</td><td>${stTag(b.status)}</td></tr>`).join('');
+  } catch(e) { console.error(e); }
+}
+function ask(t) { document.getElementById('q').value = t; send(); }
+async function send() {
+  const inp = document.getElementById('q'), btn = document.getElementById('sendBtn');
+  const text = inp.value.trim(); if (!text || btn.disabled) return;
+  inp.value = ''; btn.disabled = true;
+  const body = document.getElementById('aiBody');
+  const u = document.createElement('div'); u.className = 'msg user'; u.textContent = text; body.appendChild(u);
+  const a = document.createElement('div'); a.className = 'msg'; a.textContent = '…'; body.appendChild(a);
+  try {
+    const resp = await fetch('/api/assistant/stream', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({message:text}) });
+    const reader = resp.body.getReader(), dec = new TextDecoder(); let buf = '', out = '';
+    for (;;) {
+      const {done, value} = await reader.read(); if (done) break;
+      buf += dec.decode(value, {stream:true});
+      const parts = buf.split('\n\n'); buf = parts.pop();
+      for (const p of parts) {
+        for (const line of p.split('\n')) {
+          if (!line.startsWith('data:')) continue;
+          const dstr = line.slice(5).trim(); if (!dstr || dstr === '[DONE]') continue;
+          try {
+            const d = JSON.parse(dstr);
+            const piece = d.content ?? d.delta ?? '';
+            if (typeof piece === 'string' && piece) { out += piece; a.textContent = out; body.scrollTop = body.scrollHeight; }
+          } catch(e) {}
+        }
+      }
+    }
+    if (!out) a.textContent = '（无返回内容）';
+  } catch(e) { a.textContent = 'AI 服务暂时不可用：' + e.message; }
+  btn.disabled = false; body.scrollTop = body.scrollHeight;
+}
+load();
+</script>
+</body>
+</html>

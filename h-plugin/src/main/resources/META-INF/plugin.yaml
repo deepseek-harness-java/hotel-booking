@@ -1,0 +1,6 @@
+id: hotel-copilot
+name: AI 预订助手
+version: 1.0.0
+author: xfg-studio
+description: AI 预订助手，支持房型查询、7 天房态日历、预订下单（二次确认+会员价）、订单查询、入住率与经营指标分析。
+entrypoint: cn.xiaofuge.h.plugin.HotelPlugin
